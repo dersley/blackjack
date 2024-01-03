@@ -1,3 +1,4 @@
+
 from . import basic_strategy
 from . import deck_builder
 from . import utils
@@ -10,7 +11,7 @@ class Player:
 
         # Default bet of 2% of starting bank balance
         self.default_bet = self.bank / 50
-
+        
         # Set whether the player is counting cards
         self.card_counter = card_counter
 
@@ -38,7 +39,7 @@ class Player:
         # Check the game's total count if the player is a card counter, and change bet accordingly
         if self.card_counter:
             bet = self.place_card_counter_bet()
-
+        
         # Set a bet based on the player's remaining bank if they are betting dynamically
         elif self.dynamic_betting:
             bet = self.bank / 50
@@ -51,14 +52,15 @@ class Player:
         return utils.round_to_minimum_bet(bet, self.game.minimum_bet)
 
     def place_card_counter_bet(self, betting_spread=10):
+
         # Get the game's total count
         total_count = self.game.dealer.total_count
-
+        
         # Calculate the minimum and maximum bet
         min_bet = self.game.minimum_bet
         ground_bet = self.bank / 50
         max_bet = ground_bet * betting_spread
-
+        
         # Adjust bet based on total count
         if total_count <= 0:
             # Stay in the game with a minimum bet
@@ -77,14 +79,14 @@ class Player:
 
         if len(hand) != 2:
             return False
-
+        
         first_card, second_card = hand
 
         first_rank = first_card[0]
         second_rank = second_card[0]
 
         return first_rank == second_rank
-
+    
     def is_soft(self, hand):
         """
         Return True if the player's hand contains one Ace (two possible totals)
@@ -94,18 +96,19 @@ class Player:
 
         if len(hand) != 2:
             return False
-
+        
         # Return false if both cards are aces
-        if all(rank == "Ace" for rank, _ in hand):
+        if all(rank == 'Ace' for rank, _ in hand):
             return False
 
-        soft = any(rank == "Ace" for rank, _ in hand)
+        soft = any(rank == 'Ace' for rank, _ in hand)
 
         return soft
-
+    
     def find_soft_index(self, hand):
+
         for index, (rank, _) in enumerate(hand):
-            if rank != "Ace":
+            if rank != 'Ace':
                 return index
 
     def hit(self, hand):
@@ -127,7 +130,7 @@ class Player:
         hand.append(self.game.dealer.deal_card())
 
         return hand, new_bet
-
+    
     def play_round(self):
         """
         Play out the full round from an initial starting bet
@@ -146,6 +149,7 @@ class Player:
         # Play hands
         self.play_hand(self.hand, split_limit=split_limit)
 
+
     def play_hand(self, hand, split_count=0, split_limit=3):
         """
         Takes current hand and plays Basic Strategy
@@ -156,7 +160,7 @@ class Player:
 
         # Set the current bet
         current_bet = self.initial_bet
-
+        
         # Check dealer's visible card
         dealer_upcard = deck_builder.CARD_VALUES[self.game.dealer.hand[0][0]]
 
@@ -183,13 +187,13 @@ class Player:
                 self.play_hand(second_hand, split_count)
 
                 return
-
+            
         # Return if on blackjack with a bonus to winnings
         if hand_total == 21:
             self.round_total.append(hand_total)
             self.round_bet.append(current_bet * 1.5)
             return
-
+        
         # Return on any hand over 20
         elif hand_total >= 20:
             self.round_total.append(hand_total)
@@ -204,23 +208,25 @@ class Player:
         else:
             self.hard_total_strategy(hand, dealer_upcard, current_bet, split_count)
 
+
     def soft_total_strategy(self, hand, dealer_upcard, current_bet, split_count):
+
         # Calculate hand total
         hand_total = utils.calculate_hand_total(hand)
-
+        
         # Get the non Ace total
         soft_index = self.find_soft_index(hand)
         soft_total = deck_builder.CARD_VALUES[hand[soft_index][0]]
         strategy = basic_strategy.SOFT_TOTALS[str(soft_total), str(dealer_upcard)]
 
         # If 'S' stay and end round
-        if strategy == "S":
+        if strategy == 'S':
             self.round_total.append(hand_total)
             self.round_bet.append(current_bet)
             return
-
+        
         # Double down on 'D', draw one card and end round
-        if strategy == "D" or strategy == "DS":
+        if strategy == 'D' or strategy == 'DS':
             hand, new_bet = self.double_down(hand, current_bet=current_bet)
 
             # Calculate hand total after double down
@@ -229,11 +235,11 @@ class Player:
             self.round_bet.append(new_bet)
             return
 
-        elif strategy == "H":
+        elif strategy == 'H':
             hand = self.hit(hand)
 
             new_hand_total = utils.calculate_hand_total(hand)
-
+            
             if new_hand_total > 21:
                 self.round_total.append(new_hand_total)
                 self.round_bet.append(current_bet)
@@ -242,7 +248,9 @@ class Player:
             # Continue hand if not bust
             self.play_hand(hand, split_count)
 
+
     def hard_total_strategy(self, hand, dealer_upcard, current_bet, split_count):
+        
         # Calculate hand total
         hand_total = utils.calculate_hand_total(hand)
 
@@ -261,13 +269,13 @@ class Player:
         strategy = basic_strategy.HARD_TOTALS[str(hard_total), str(dealer_upcard)]
 
         # If 'S' stay and end round
-        if strategy == "S":
+        if strategy == 'S':
             self.round_total.append(hand_total)
             self.round_bet.append(current_bet)
             return
-
+        
         # Double down on 'D'
-        if strategy == "D":
+        if strategy == 'D':
             hand, new_bet = self.double_down(hand, current_bet)
 
             # Calculate hand total after double down
@@ -277,7 +285,7 @@ class Player:
             return
 
         # Hit on 'H'
-        elif strategy == "H":
+        elif strategy == 'H':
             hand = self.hit(hand)
 
             new_hand_total = utils.calculate_hand_total(hand)
@@ -289,3 +297,5 @@ class Player:
 
             # Continue hand if not bust
             self.play_hand(hand, split_count)
+
+
