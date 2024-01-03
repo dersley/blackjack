@@ -5,22 +5,22 @@ from . import utils
 from .dealer import Dealer
 from .player import Player
 
+
 class Game:
     def __init__(
-            self,
-            num_players: int,
-            player_bank: int=10_000,
-            num_decks: int=1,
-            split_limit: int=3,
-            minimum_bet: int = 10,
-            shuffle_trigger: float = 0.25,
+        self,
+        num_players: int,
+        player_bank: int = 10_000,
+        num_decks: int = 1,
+        split_limit: int = 3,
+        minimum_bet: int = 10,
+        shuffle_trigger: float = 0.25,
     ):
-        
         self.dealer = Dealer(num_decks)
         self.num_decks = num_decks
         self.num_players = num_players
         self.player_bank = player_bank
-        
+
         self.minimum_bet = minimum_bet
         self.split_limit = split_limit
         self.shuffle_trigger = shuffle_trigger
@@ -31,27 +31,35 @@ class Game:
         # Shuffle cards
         self.dealer.shuffle_deck()
 
-    
     def create_players(self):
-
         self.players = []
-        for i in range (self.num_players):
+        for i in range(self.num_players):
             # First player is a card counter
             if i == 0:
-                self.players.append(Player(bank=self.player_bank, game=self, card_counter=True))
-            
+                self.players.append(
+                    Player(bank=self.player_bank, game=self, card_counter=True)
+                )
+
             # Second player just bets minimum every game
             elif i == 1:
-                self.players.append(Player(bank=self.player_bank, game=self, card_counter=False, dynamic_betting=False))
+                self.players.append(
+                    Player(
+                        bank=self.player_bank,
+                        game=self,
+                        card_counter=False,
+                        dynamic_betting=False,
+                    )
+                )
 
             else:
                 # Other players play basic strategy with proportional betting
-                self.players.append(Player(bank=self.player_bank, game=self, card_counter=False))
+                self.players.append(
+                    Player(bank=self.player_bank, game=self, card_counter=False)
+                )
 
         return self.players
-    
-    def check_deck(self):
 
+    def check_deck(self):
         # Check if deck needs refresh
         remaining_cards = len(self.dealer.deck)
         shuffle_limit = self.shuffle_trigger * (52 * self.num_decks)
@@ -61,9 +69,7 @@ class Game:
             self.dealer.shuffle_deck()
 
     def clear_table(self):
-
         for player in self.players:
-
             player.hand = []
             player.round_total = []
             player.round_bet = []
@@ -82,7 +88,7 @@ class Game:
     def deal_round(self):
         """
         Check to see if deck needs a shuffle.
-        
+
         Deal each player and the dealer two cards each.
         """
 
@@ -104,7 +110,7 @@ class Game:
         """
 
         for player in self.players:
-                player.play_round()
+            player.play_round()
 
         self.dealer.play_round()
 
@@ -114,21 +120,19 @@ class Game:
         """
 
         for player in self.players:
-
             for i, hand in enumerate(player.round_total):
-
                 outcome = utils.compare_hands(hand, self.dealer.round_total)
 
-                if outcome == 'Win':
+                if outcome == "Win":
                     # Pay the bet value to the player bank
                     player.bank += player.round_bet[i]
-                if outcome == 'Lose':
+                if outcome == "Lose":
                     # Remove the bet value from the player bank
                     player.bank -= player.round_bet[i]
                     # If player has overbet, set bank to zero
                     if player.bank < 0:
                         player.bank = 0
-                if outcome == 'Draw':
+                if outcome == "Draw":
                     # Do nothing on a draw
                     pass
 
@@ -146,19 +150,16 @@ class Game:
         simdata = np.zeros((sims, rounds, self.num_players))
         count_data = np.zeros((sims, rounds, 2))
         for i, sim in enumerate(simdata):
-
             # Restart the bank balances after each sim
             self.restart_game()
 
             for round in range(rounds):
-
                 # Record counts at start of round
                 count_data[i, round, 0] = self.dealer.running_count
                 count_data[i, round, 1] = self.dealer.total_count
 
                 # Track player earnings at start of round
                 for player in range(self.num_players):
-
                     # Write the player's bank to the simdata
                     simdata[i, round, player] = self.players[player].bank
 
@@ -170,18 +171,16 @@ class Game:
                 self.resolve_round()
 
         return simdata, count_data
-    
 
     def plot_simdata(
-            self, 
-            player_index=0, 
-            simdata=None, 
-            plot_sims=True, 
-            confidence=95, 
-            log_scale=False,
-            figsize=(16, 4)
-            ):
-
+        self,
+        player_index=0,
+        simdata=None,
+        plot_sims=True,
+        confidence=95,
+        log_scale=False,
+        figsize=(16, 4),
+    ):
         # Simulate default simdata if none is passed
         if simdata is None:
             simdata = self.simulate_game()
@@ -196,9 +195,10 @@ class Game:
         percentiles = np.zeros((num_rounds, 3))
         for round in range(num_rounds):
             round_simdata = player_data[:, round]
-            percentiles[round, :] = utils.calculate_percentiles(round_simdata, confidence=confidence)
+            percentiles[round, :] = utils.calculate_percentiles(
+                round_simdata, confidence=confidence
+            )
 
-        
         fig, ax = plt.subplots(figsize=figsize)
 
         x = np.arange(num_rounds)
@@ -208,22 +208,24 @@ class Game:
             for i in range(simdata.shape[0] // 4):
                 ax.plot(x, player_data[i], alpha=0.2, lw=1)
 
-        # Plot the percentile values 
-        ax.plot(x, percentiles[:, 0], color='red', lw=1)
-        ax.plot(x, percentiles[:, 1], color='red', lw=2)
-        ax.plot(x, percentiles[:, 2], color='red', lw=1)
+        # Plot the percentile values
+        ax.plot(x, percentiles[:, 0], color="red", lw=1)
+        ax.plot(x, percentiles[:, 1], color="red", lw=2)
+        ax.plot(x, percentiles[:, 2], color="red", lw=1)
 
-        ax.fill_between(x, y1=percentiles[:, 0], y2=percentiles[:,2], color='red', alpha=0.25)
+        ax.fill_between(
+            x, y1=percentiles[:, 0], y2=percentiles[:, 2], color="red", alpha=0.25
+        )
 
         if log_scale:
-            ax.set_yscale('log')
+            ax.set_yscale("log")
 
         else:
             ax.set_ylim(0, 20_000)
 
         ax.set_xlim(0)
-        ax.set_xlabel('Rounds')
-        ax.set_ylabel('Bank Balance ($)')
+        ax.set_xlabel("Rounds")
+        ax.set_ylabel("Bank Balance ($)")
 
         # Get player info for the plot title
         dynamic_better = self.players[player_index].dynamic_betting
@@ -235,15 +237,12 @@ class Game:
 
         # Set title based on type of player
         if card_counter:
-            title = f'Player Balance: Card Counting, {bet_percentage :.0f}% Bet'
+            title = f"Player Balance: Card Counting, {bet_percentage :.0f}% Bet"
         elif dynamic_better:
-            title = f'Player Balance: Basic Strategy, {bet_percentage :.0f}% Bet'
+            title = f"Player Balance: Basic Strategy, {bet_percentage :.0f}% Bet"
         else:
-            title = f'Player Balance: Basic Strategy, ${default_bet :.0f} Bet'
-        
+            title = f"Player Balance: Basic Strategy, ${default_bet :.0f} Bet"
+
         ax.set_title(title)
 
         plt.show()
-
-
-
